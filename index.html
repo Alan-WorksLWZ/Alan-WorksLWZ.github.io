@@ -51,6 +51,17 @@
             font-family: 'Noto Sans SC', 'Inter', sans-serif;
             background-color: var(--bg-color);
         }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
 
         .chart-card {
             background-color: var(--card-bg-color);
@@ -58,6 +69,8 @@
             padding: 2.5rem;
             box-shadow: none;
             border: 1px solid var(--card-border-color);
+            opacity: 0;
+            animation: fadeInUp 0.7s ease-out forwards;
         }
         
         .main-title { color: var(--main-title-color); }
@@ -86,7 +99,7 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            transition: transform 0.4s ease-in-out, opacity 0.4s ease-in-out;
         }
         #theme-toggle .sun-icon {
             transform: translate(-50%, -50%) rotate(0deg) scale(1);
@@ -122,45 +135,45 @@
         </header>
 
         <main id="charts-container" class="w-full grid grid-cols-1 lg:grid-cols-2 gap-10">
-            <div class="chart-card">
+            <div class="chart-card" style="animation-delay: 0.1s;">
                 <h2 class="text-2xl chart-title mb-8 text-center">1. 近视度数分布</h2>
                 <div class="chart-container"><canvas id="myopia-distribution-chart"></canvas></div>
             </div>
-            <div class="chart-card">
+            <div class="chart-card" style="animation-delay: 0.2s;">
                 <h2 class="text-2xl chart-title mb-8 text-center">2. 每日使用电子产品时长</h2>
                 <div class="chart-container"><canvas id="screen-time-chart"></canvas></div>
             </div>
-            <div class="chart-card">
+            <div class="chart-card" style="animation-delay: 0.3s;">
                 <h2 class="text-2xl chart-title mb-8 text-center">3. 各年级近视情况对比</h2>
                 <div class="chart-container"><canvas id="myopia-by-grade-chart"></canvas></div>
             </div>
-            <div class="chart-card">
+            <div class="chart-card" style="animation-delay: 0.4s;">
                 <h2 class="text-2xl chart-title mb-8 text-center">4. 在昏暗环境下使用电子产品与近视度数的关系</h2>
                 <div class="chart-container"><canvas id="habit-vs-myopia-chart"></canvas></div>
             </div>
-            <div class="chart-card">
+            <div class="chart-card" style="animation-delay: 0.5s;">
                 <h2 class="text-2xl chart-title mb-8 text-center">5. 专业视力检测频率</h2>
                 <div class="chart-container"><canvas id="exam-frequency-chart"></canvas></div>
             </div>
-            <div class="chart-card">
+            <div class="chart-card" style="animation-delay: 0.6s;">
                 <h2 class="text-2xl chart-title mb-8 text-center">6. 家庭近视史</h2>
                 <div class="chart-container"><canvas id="family-history-chart"></canvas></div>
             </div>
-             <div class="chart-card">
+             <div class="chart-card" style="animation-delay: 0.7s;">
                 <h2 class="text-2xl chart-title mb-8 text-center">7. 定时眼部休息习惯</h2>
                 <div class="chart-container"><canvas id="eye-break-chart"></canvas></div>
             </div>
-            <div class="chart-card">
+            <div class="chart-card" style="animation-delay: 0.8s;">
                 <h2 class="text-2xl chart-title mb-8 text-center">8. 每日户外活动时长</h2>
                 <div class="chart-container"><canvas id="outdoor-activity-chart"></canvas></div>
             </div>
-             <div class="chart-card">
+             <div class="chart-card" style="animation-delay: 0.9s;">
                 <h2 class="text-2xl chart-title mb-8 text-center">9. 眼部疲劳缓解方式</h2>
                 <div class="chart-container"><canvas id="fatigue-relief-chart"></canvas></div>
             </div>
             
             <!-- Conclusion Card -->
-            <div class="chart-card lg:col-span-2">
+            <div class="chart-card lg:col-span-2" style="animation-delay: 1s;">
                 <h2 class="text-2xl chart-title mb-8 text-center">调查结论</h2>
                 <div class="conclusion-text text-base md:text-lg space-y-4 leading-relaxed">
                     <p>综合本次调查数据，我们可以得出以下几个关键结论：</p>
@@ -182,7 +195,19 @@
     <script>
         let chartObjects = {};
 
-        const csvData = `ID,开始时间,完成时间,电子邮件,名称,总得分,测验反馈,上次修改时间," 您目前的近视度数是？\n","分数 -  您目前的近视度数是？\n","反馈 -  您目前的近视度数是？\n",你现在在MYP的年段是,分数 - 你现在在MYP的年段是,反馈 - 你现在在MYP的年段是,您平均多久进行一次专业的视力检测或眼科检查？,分数 - 您平均多久进行一次专业的视力检测或眼科检查？,反馈 - 您平均多久进行一次专业的视力检测或眼科检查？,您的家庭成员（如父母）有没有近视史？,分数 - 您的家庭成员（如父母）有没有近视史？,反馈 - 您的家庭成员（如父母）有没有近视史？,您平均每天使用电子产品（手机平板电脑）的总时长是多少？,分数 - 您平均每天使用电子产品（手机平板电脑）的总时长是多少？,反馈 - 您平均每天使用电子产品（手机平板电脑）的总时长是多少？,在所有电子产品中，您使用手机的时间占比最高吗？,分数 - 在所有电子产品中，您使用手机的时间占比最高吗？,反馈 - 在所有电子产品中，您使用手机的时间占比最高吗？,您是否经常在昏暗的环境下使用手机或者观看电脑荧幕？,分数 - 您是否经常在昏暗的环境下使用手机或者观看电脑荧幕？,反馈 - 您是否经常在昏暗的环境下使用手机或者观看电脑荧幕？,"你在阅读或者使用电脑时，眼睛与荧幕距离通常是多远？（2*10cm）\n","分数 - 你在阅读或者使用电脑时，眼睛与荧幕距离通常是多远？（2*10cm）\n","反馈 - 你在阅读或者使用电脑时，眼睛与荧幕距离通常是多远？（2*10cm）\n",您会定期（每小时）让眼睛休息一下，望向远处吗？,分数 - 您会定期（每小时）让眼睛休息一下，望向远处吗？,反馈 - 您会定期（每小时）让眼睛休息一下，望向远处吗？,"您通常在什么姿势下使用手机？（可多选）\n","分数 - 您通常在什么姿势下使用手机？（可多选）\n","反馈 - 您通常在什么姿势下使用手机？（可多选）\n","您平均每天户外活动的时间有多长？\n","分数 - 您平均每天户外活动的时间有多长？\n","反馈 - 您平均每天户外活动的时间有多长？\n",您有使用任何眼药水或进行眼部按摩来缓解眼部疲劳吗？,分数 - 您有使用任何眼药水或进行眼部按摩来缓解眼部疲劳吗？,反馈 - 您有使用任何眼药水或进行眼部按摩来缓解眼部疲劳吗？,您认为以下哪项是导致近视的主要原因？,分数 - 您认为以下哪项是导致近视的主要原因？,反馈 - 您认为以下哪项是导致近视的主要原因？,您是否了解近视的成因以及如何科学矫正？,分数 - 您是否了解近视的成因以及如何科学矫正？,反馈 - 您是否了解近视的成因以及如何科学矫正？
+        const csvData = `ID,开始时间,完成时间,电子邮件,名称,总得分,测验反馈,上次修改时间," 您目前的近视度数是？
+","分数 -  您目前的近视度数是？
+","反馈 -  您目前的近视度数是？
+",你现在在MYP的年段是,分数 - 你现在在MYP的年段是,反馈 - 你现在在MYP的年段是,您平均多久进行一次专业的视力检测或眼科检查？,分数 - 您平均多久进行一次专业的视力检测或眼科检查？,反馈 - 您平均多久进行一次专业的视力检测或眼科检查？,您的家庭成员（如父母）有没有近视史？,分数 - 您的家庭成员（如父母）有没有近视史？,反馈 - 您的家庭成员（如父母）有没有近视史？,您平均每天使用电子产品（手机平板电脑）的总时长是多少？,分数 - 您平均每天使用电子产品（手机平板电脑）的总时长是多少？,反馈 - 您平均每天使用电子产品（手机平板电脑）的总时长是多少？,在所有电子产品中，您使用手机的时间占比最高吗？,分数 - 在所有电子产品中，您使用手机的时间占比最高吗？,反馈 - 在所有电子产品中，您使用手机的时间占比最高吗？,您是否经常在昏暗的环境下使用手机或者观看电脑荧幕？,分数 - 您是否经常在昏暗的环境下使用手机或者观看电脑荧幕？,反馈 - 您是否经常在昏暗的环境下使用手机或者观看电脑荧幕？,"你在阅读或者使用电脑时，眼睛与荧幕距离通常是多远？（2*10cm）
+","分数 - 你在阅读或者使用电脑时，眼睛与荧幕距离通常是多远？（2*10cm）
+","反馈 - 你在阅读或者使用电脑时，眼睛与荧幕距离通常是多远？（2*10cm）
+",您会定期（每小时）让眼睛休息一下，望向远处吗？,分数 - 您会定期（每小时）让眼睛休息一下，望向远处吗？,反馈 - 您会定期（每小时）让眼睛休息一下，望向远处吗？,"您通常在什么姿势下使用手机？（可多选）
+","分数 - 您通常在什么姿势下使用手机？（可多选）
+","反馈 - 您通常在什么姿势下使用手机？（可多选）
+","您平均每天户外活动的时间有多长？
+","分数 - 您平均每天户外活动的时间有多长？
+","反馈 - 您平均每天户外活动的时间有多长？
+",您有使用任何眼药水或进行眼部按摩来缓解眼部疲劳吗？,分数 - 您有使用任何眼药水或进行眼部按摩来缓解眼部疲劳吗？,反馈 - 您有使用任何眼药水或进行眼部按摩来缓解眼部疲劳吗？,您认为以下哪项是导致近视的主要原因？,分数 - 您认为以下哪项是导致近视的主要原因？,反馈 - 您认为以下哪项是导致近视的主要原因？,您是否了解近视的成因以及如何科学矫正？,分数 - 您是否了解近视的成因以及如何科学矫正？,反馈 - 您是否了解近视的成因以及如何科学矫正？
 1,2025-10-10 17:08:26,2025-10-10 17:11:03,anonymous,,300,,,正常视力或近视度数小于300度,,,G10,,,一年一次,,,没有,,,9小时以上,,,是,,,是，经常,,,2,,,经常,,,7,,,8,,,经常,,,以上症状都没有;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,300
 2,2025-10-10 17:11:08,2025-10-10 17:13:20,anonymous,,200,,,正常视力或近视度数小于300度,,,G9,,,半年一次,,,有,,,3-5小时,,,是,,,是，经常,,,4,,,偶尔但当经常忘记,,,7,,,8,,,经常,,,眼干、眼涩;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,200
 3,2025-10-10 17:13:25,2025-10-10 17:15:38,anonymous,,100,,,正常视力或近视度数小于300度,,,G9,,,半年一次,,,有,,,3-5小时,,,是,,,偶尔,,,5,,,经常,,,5,,,8,,,经常,,,眼干、眼涩;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,100
@@ -220,6 +245,9 @@
 35,2025-10-10 18:04:00,2025-10-10 18:05:32,anonymous,,700,,,600度以上属于高度近视,,,G9,,,半年一次,,,有,,,7-9小时,,,是,,,是，经常,,,2,,,经常,,,7,,,8,,,经常,,,视力模糊;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,700
 36,2025-10-10 18:05:37,2025-10-10 18:07:09,anonymous,,300,,,正常视力或近视度数小于300度,,,G8,,,半年一次,,,有,,,3-5小时,,,是,,,偶尔,,,3,,,经常,,,3,,,4,,,经常,,,以上症状都没有;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,300
 37,2025-10-10 18:07:14,2025-10-10 18:08:41,anonymous,,500,,,300-600度属于中度近视,,,G10,,,一年一次,,,有,,,5-7小时,,,是,,,是，经常,,,3,,,经常,,,5,,,8,,,经常,,,眼干、眼涩;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,500
+38,2025-10-11 15:20:11,2025-10-11 15:22:11,anonymous,,0,,,正常视力或近视度数小于300度,,,G7,,,一年一次,,,没有,,,3,,,是,,,否，从不,,,5,,,会,,,1,,,2,,,经常,,,以上症状都没有;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,0
+39,2025-10-11 15:22:15,2025-10-11 15:23:51,anonymous,,200,,,正常视力或近视度数小于300度,,,G7,,,两年或更长,,,有,,,2,,,是,,,偶尔,,,4,,,会,,,3,,,4,,,偶尔,,,眼睛疲劳酸痛;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,200
+40,2025-10-11 20:31:54,2025-10-11 20:33:07,anonymous,,400,,,300-600度属于中度近视,,,G9,,,半年一次,,,有,,,4,,,是,,,是，经常,,,3,,,偶尔但当经常忘记,,,5,,,6,,,偶尔,,,视力模糊;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,400
 `;
         
         const themeToggleBtn = document.getElementById('theme-toggle');
@@ -262,6 +290,11 @@
         Chart.defaults.font.family = "'Noto Sans SC', 'Inter', sans-serif";
         Chart.defaults.font.size = 14;
         Chart.defaults.plugins.legend.position = 'bottom';
+        Chart.defaults.animation = {
+            duration: 1200,
+            easing: 'easeOutCubic'
+        };
+
 
         window.onload = () => {
             Papa.parse(csvData, {
