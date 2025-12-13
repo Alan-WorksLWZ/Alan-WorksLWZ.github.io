@@ -2,473 +2,889 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>学生视力调查分析</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>G.O.A.T. Bio-Monitor Ultra</title>
+    
+    <!-- 核心库：Three.js r128 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+
     <style>
-        /* MD3 Color Palette & Style Definitions */
-        :root {
-            --bg-color: #FFFBFF; /* Surface */
-            --card-bg-color: #F7F2FA; /* Surface Container */
-            --main-title-color: #1D1B20; /* On Surface */
-            --subtitle-color: #49454F; /* On Surface Variant */
-            --chart-title-color: #1D1B20;
-            --chart-text-color: #49454F;
-            --conclusion-text-color: #49454F;
-            --chart-grid-color: #E7E0EC; /* Outline */
-            --card-border-color: transparent;
-            --primary-accent: #6750A4;
-            --icon-color: #49454F;
-            --icon-bg-hover: #E8DEF8;
-        }
-
-        html.dark {
-            --bg-color: #141218; /* Surface */
-            --card-bg-color: #211F26; /* Surface Container High */
-            --main-title-color: #E6E1E5; /* On Surface */
-            --subtitle-color: #CAC4D0; /* On Surface Variant */
-            --chart-title-color: #E6E1E5;
-            --chart-text-color: #CAC4D0;
-            --conclusion-text-color: #CAC4D0;
-            --chart-grid-color: #49454F; /* Outline */
-            --card-border-color: #49454F;
-            --primary-accent: #D0BCFF;
-            --icon-color: #CAC4D0;
-            --icon-bg-hover: #4A4458;
-        }
+        body { margin: 0; overflow: hidden; font-family: 'Inter', 'Noto Sans SC', sans-serif; transition: background-color 0.5s; }
         
-        /* Smooth transition for all elements */
-        * {
-            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-        }
+        /* 模式样式 */
+        body.dark-mode { background-color: #050505; color: white; }
+        body.light-mode { background-color: #f3f4f6; color: #1f2937; }
 
-        body {
-            font-family: 'Noto Sans SC', 'Inter', sans-serif;
-            background-color: var(--bg-color);
+        .dark-mode #canvas-container { background: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%); }
+        .light-mode #canvas-container { background: radial-gradient(circle at center, #e5e7eb 0%, #d1d5db 100%); }
+
+        /* 玻璃拟态面板 */
+        .glass-panel {
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
         }
+        .dark-mode .glass-panel { background: rgba(20, 20, 20, 0.6); border-color: rgba(255,255,255,0.1); }
+        .light-mode .glass-panel { background: rgba(255, 255, 255, 0.7); border-color: rgba(0,0,0,0.05); box-shadow: 0 8px 32px rgba(0,0,0,0.05); }
+
+        /* 按钮与交互 */
+        .btn-action { transition: transform 0.1s, background-color 0.2s; }
+        .btn-action:active { transform: scale(0.92); }
+        .dark-mode .btn-action:hover { background: rgba(255,255,255,0.15); }
+        .light-mode .btn-action:hover { background: rgba(0,0,0,0.05); }
+
+        .btn-lang { opacity: 0.6; transition: 0.2s; }
+        .btn-lang.active { opacity: 1; font-weight: bold; }
+        .dark-mode .btn-lang.active { background: rgba(255,255,255,0.2); color: #F97316; }
+        .light-mode .btn-lang.active { background: rgba(0,0,0,0.1); color: #EA580C; }
+
+        /* 动画特效 */
+        #naming-modal { transition: opacity 0.5s; }
+        .modal-hidden { opacity: 0; pointer-events: none; }
         
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
+        #canvas-container { cursor: grab; }
+        #canvas-container:active { cursor: grabbing; }
 
-        .chart-card {
-            background-color: var(--card-bg-color);
-            border-radius: 1.75rem;
-            padding: 2.5rem;
-            box-shadow: none;
-            border: 1px solid var(--card-border-color);
-            opacity: 0;
-            animation: fadeInUp 0.7s ease-out forwards;
-        }
-        
-        .main-title { color: var(--main-title-color); }
-        .subtitle { color: var(--subtitle-color); }
-        .chart-title { color: var(--chart-title-color); font-weight: 500; }
-        .conclusion-text { color: var(--conclusion-text-color); }
+        @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(74, 222, 128, 0); } 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); } }
+        .live-dot { animation: pulse-green 2s infinite; }
 
-        .chart-container {
-            position: relative;
-            margin: auto;
-            height: 55vh;
-            width: 100%;
-        }
-
-        #theme-toggle {
-            color: var(--icon-color);
-            position: relative;
-            width: 40px;
-            height: 40px;
-        }
-        #theme-toggle:hover {
-            background-color: var(--icon-bg-hover);
-        }
-        #theme-toggle svg {
+        .floating-emoji {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            transition: transform 0.4s ease-in-out, opacity 0.4s ease-in-out;
+            pointer-events: none;
+            animation: floatUp 2s ease-out forwards;
+            font-size: 32px;
+            z-index: 50;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
-        #theme-toggle .sun-icon {
-            transform: translate(-50%, -50%) rotate(0deg) scale(1);
-            opacity: 1;
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(0.5) rotate(0deg); opacity: 0; }
+            20% { transform: translateY(-30px) scale(1.2) rotate(-10deg); opacity: 1; }
+            100% { transform: translateY(-150px) scale(1) rotate(10deg); opacity: 0; }
         }
-        #theme-toggle .moon-icon {
-            transform: translate(-50%, -50%) rotate(90deg) scale(0);
-            opacity: 0;
+
+        /* 聊天窗口样式 */
+        #chat-panel {
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
         }
-        html.dark #theme-toggle .sun-icon {
-            transform: translate(-50%, -50%) rotate(-90deg) scale(0);
-            opacity: 0;
+        .chat-msg {
+            animation: fadeIn 0.3s ease-out;
         }
-        html.dark #theme-toggle .moon-icon {
-            transform: translate(-50%, -50%) rotate(0deg) scale(1);
-            opacity: 1;
-        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="antialiased">
+<body class="dark-mode">
 
-    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
-        <header class="relative text-center my-8 md:my-16">
-            <h1 class="text-4xl md:text-5xl font-normal main-title tracking-tight">MYP学生视力调查</h1>
-            <p class="text-xl subtitle mt-4 font-light">数据可视化分析报告</p>
-            
-            <div class="absolute top-0 right-4">
-                <button id="theme-toggle" type="button" class="focus:outline-none rounded-full text-sm p-2.5">
-                    <svg class="w-6 h-6 sun-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                    <svg class="w-6 h-6 moon-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+    <!-- 3D 渲染区域 -->
+    <div id="canvas-container" class="absolute inset-0"></div>
+
+    <!-- 命名弹窗 -->
+    <div id="naming-modal" class="absolute inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-xl">
+        <div class="glass-panel p-8 rounded-2xl max-w-md w-full text-center shadow-2xl border border-white/10">
+            <div class="w-20 h-20 bg-gradient-to-br from-orange-400 to-red-500 rounded-full mx-auto mb-6 flex items-center justify-center text-4xl shadow-lg animate-bounce">🐱</div>
+            <h2 class="text-3xl font-black mb-2 text-white tracking-tight" data-i18n="welcome_title">Welcome to G.O.A.T.</h2>
+            <p class="text-gray-400 mb-8 text-sm font-medium" data-i18n="welcome_desc">High-Fidelity Bio-Companion System</p>
+            <input type="text" id="pet-name-input" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-center text-white text-2xl font-bold mb-6 focus:outline-none focus:border-orange-500 focus:bg-white/10 placeholder-gray-600 transition-all" placeholder="Name your cat..." maxlength="10">
+            <button onclick="startExperience()" class="w-full bg-white text-black hover:bg-gray-200 font-bold py-4 rounded-xl transition-all shadow-lg transform hover:scale-[1.02]" data-i18n="start_btn">Initialize System</button>
+        </div>
+    </div>
+
+    <!-- 主 UI 层 -->
+    <div id="main-ui" class="absolute inset-0 pointer-events-none flex flex-col justify-between p-6 z-10 opacity-0 transition-opacity duration-1000">
+        
+        <!-- 顶部栏 -->
+        <header class="flex justify-between items-start pointer-events-auto relative z-20">
+            <div>
+                <h1 id="pet-name-display" class="text-6xl md:text-8xl font-black tracking-tighter leading-none transition-colors drop-shadow-lg">G.O.A.T.</h1>
+                <div class="flex items-center gap-3 mt-2 pl-1">
+                    <span class="w-2.5 h-2.5 rounded-full bg-green-500 live-dot"></span>
+                    <span class="text-xs font-bold font-mono uppercase tracking-widest opacity-70" data-i18n="status">System Online</span>
+                </div>
+            </div>
+
+            <div class="flex flex-col items-end gap-3">
+                <div class="glass-panel rounded-full p-1.5 flex gap-1">
+                    <button onclick="changeLang('zh-CN')" class="btn-lang active px-4 py-1.5 rounded-full text-xs" id="lang-cn">简</button>
+                    <button onclick="changeLang('zh-TW')" class="btn-lang px-4 py-1.5 rounded-full text-xs" id="lang-tw">繁</button>
+                    <button onclick="changeLang('en')" class="btn-lang px-4 py-1.5 rounded-full text-xs" id="lang-en">EN</button>
+                </div>
+                <button onclick="toggleTheme()" class="glass-panel w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors">
+                    <i id="theme-icon" class="fa-solid fa-sun text-yellow-400 text-lg"></i>
                 </button>
             </div>
         </header>
 
-        <main id="charts-container" class="w-full grid grid-cols-1 lg:grid-cols-2 gap-10">
-            <div class="chart-card" style="animation-delay: 0.1s;">
-                <h2 class="text-2xl chart-title mb-8 text-center">1. 近视度数分布</h2>
-                <div class="chart-container"><canvas id="myopia-distribution-chart"></canvas></div>
-            </div>
-            <div class="chart-card" style="animation-delay: 0.2s;">
-                <h2 class="text-2xl chart-title mb-8 text-center">2. 每日使用电子产品时长</h2>
-                <div class="chart-container"><canvas id="screen-time-chart"></canvas></div>
-            </div>
-            <div class="chart-card" style="animation-delay: 0.3s;">
-                <h2 class="text-2xl chart-title mb-8 text-center">3. 各年级近视情况对比</h2>
-                <div class="chart-container"><canvas id="myopia-by-grade-chart"></canvas></div>
-            </div>
-            <div class="chart-card" style="animation-delay: 0.4s;">
-                <h2 class="text-2xl chart-title mb-8 text-center">4. 在昏暗环境下使用电子产品与近视度数的关系</h2>
-                <div class="chart-container"><canvas id="habit-vs-myopia-chart"></canvas></div>
-            </div>
-            <div class="chart-card" style="animation-delay: 0.5s;">
-                <h2 class="text-2xl chart-title mb-8 text-center">5. 专业视力检测频率</h2>
-                <div class="chart-container"><canvas id="exam-frequency-chart"></canvas></div>
-            </div>
-            <div class="chart-card" style="animation-delay: 0.6s;">
-                <h2 class="text-2xl chart-title mb-8 text-center">6. 家庭近视史</h2>
-                <div class="chart-container"><canvas id="family-history-chart"></canvas></div>
-            </div>
-             <div class="chart-card" style="animation-delay: 0.7s;">
-                <h2 class="text-2xl chart-title mb-8 text-center">7. 定时眼部休息习惯</h2>
-                <div class="chart-container"><canvas id="eye-break-chart"></canvas></div>
-            </div>
-            <div class="chart-card" style="animation-delay: 0.8s;">
-                <h2 class="text-2xl chart-title mb-8 text-center">8. 每日户外活动时长</h2>
-                <div class="chart-container"><canvas id="outdoor-activity-chart"></canvas></div>
-            </div>
-             <div class="chart-card" style="animation-delay: 0.9s;">
-                <h2 class="text-2xl chart-title mb-8 text-center">9. 眼部疲劳缓解方式</h2>
-                <div class="chart-container"><canvas id="fatigue-relief-chart"></canvas></div>
-            </div>
+        <!-- 左侧：实时状态监控面板 -->
+        <div id="stats-panel" class="absolute top-36 left-6 glass-panel p-6 rounded-2xl w-72 transition-all duration-700 transform -translate-x-full opacity-0 md:translate-x-0 md:opacity-100 shadow-2xl pointer-events-auto">
+            <h3 class="text-xs font-bold uppercase opacity-50 mb-5 flex items-center gap-2 tracking-wider">
+                <i class="fa-solid fa-microchip"></i> <span data-i18n="monitor_title">Bio-Metrics</span>
+            </h3>
             
-            <!-- Conclusion Card -->
-            <div class="chart-card lg:col-span-2" style="animation-delay: 1s;">
-                <h2 class="text-2xl chart-title mb-8 text-center">调查结论</h2>
-                <div class="conclusion-text text-base md:text-lg space-y-4 leading-relaxed">
-                    <p>综合本次调查数据，我们可以得出以下几个关键结论：</p>
-                    <ul class="list-disc list-inside space-y-3 pl-2">
-                        <li><strong class="font-medium">近视问题普遍存在:</strong> 绝大多数受访学生存在不同程度的近视，其中中度和高度近视占有相当大的比例，表明学生群体的视力健康状况不容乐观。</li>
-                        <li><strong class="font-medium">高强度用眼是主因:</strong> 每日长时间（超过5小时）使用电子产品、经常在昏暗环境下用眼是普遍现象。这些不良用眼习惯与较高的近视度数呈现出明显的相关性。</li>
-                        <li><strong class="font-medium">年级增长与视力下降同步:</strong> 从数据趋势看，随着年级的升高，学生的近视问题（特别是中、高度近视）有加重的趋势，这可能与学业压力增大、电子产品使用时间更长有关。</li>
-                        <li><strong class="font-medium">预防措施仍有不足:</strong> 尽管大部分学生有定期检查视力的意识，但在保证充足户外活动时间、定时让眼部休息等关键的近视预防行为上，仍有较大提升空间。</li>
-                        <li><strong class="font-medium">遗传因素不可忽视:</strong> 大部分学生有家庭近视史，这提示遗传因素在近视问题上扮演了重要角色，这类学生群体更应注重后天用眼习惯的培养。</li>
-                    </ul>
-                    <p class="pt-4">
-                        因此，为了改善学生的视力健康，建议学校和家庭共同努力，加强健康用眼教育，鼓励学生增加户外活动时间，并监督其养成定时休息、保持正确读写姿势等良好习惯。
-                    </p>
+            <!-- Mood -->
+            <div class="mb-5 group">
+                <div class="flex justify-between text-xs font-bold mb-2">
+                    <span data-i18n="stat_mood" class="opacity-80">Mood</span>
+                    <span id="val-mood" class="font-mono text-blue-400">80%</span>
+                </div>
+                <div class="h-1.5 bg-gray-500/20 rounded-full overflow-hidden">
+                    <div id="bar-mood" class="h-full bg-gradient-to-r from-blue-400 to-blue-600 transition-all duration-500 relative" style="width: 80%">
+                        <div class="absolute right-0 top-0 h-full w-2 bg-white/50 animate-pulse"></div>
+                    </div>
                 </div>
             </div>
-        </main>
+
+            <!-- Hunger -->
+            <div class="mb-5 group">
+                <div class="flex justify-between text-xs font-bold mb-2">
+                    <span data-i18n="stat_hunger" class="opacity-80">Hunger</span>
+                    <span id="val-hunger" class="font-mono text-orange-400">70%</span>
+                </div>
+                <div class="h-1.5 bg-gray-500/20 rounded-full overflow-hidden">
+                    <div id="bar-hunger" class="h-full bg-gradient-to-r from-orange-400 to-red-500 transition-all duration-500" style="width: 70%"></div>
+                </div>
+            </div>
+
+            <!-- Affection -->
+            <div class="mb-5 group">
+                <div class="flex justify-between text-xs font-bold mb-2">
+                    <span data-i18n="stat_affection" class="opacity-80">Affection</span>
+                    <span id="val-affection" class="font-mono text-pink-400">25%</span>
+                </div>
+                <div class="h-1.5 bg-gray-500/20 rounded-full overflow-hidden">
+                    <div id="bar-affection" class="h-full bg-gradient-to-r from-pink-400 to-purple-500 transition-all duration-500" style="width: 25%"></div>
+                </div>
+            </div>
+
+            <!-- Health Status -->
+            <div class="flex items-center justify-between mt-2 pt-4 border-t border-white/10">
+                <span class="text-xs opacity-50 font-bold uppercase tracking-wider" data-i18n="stat_health">Status</span>
+                <div class="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full">
+                    <div id="health-dot" class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                    <span id="val-health" class="text-xs font-bold">Optimal</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：AI 对话面板 (新) -->
+        <div id="chat-panel" class="absolute bottom-28 right-6 glass-panel p-0 rounded-2xl w-80 h-96 flex flex-col pointer-events-auto transform translate-x-[120%] shadow-2xl overflow-hidden">
+            <!-- Chat Header -->
+            <div class="p-4 border-b border-white/10 bg-white/5 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">✨</span>
+                    <span class="font-bold text-sm" id="chat-title-name">Pixel</span>
+                </div>
+                <button onclick="toggleChat()" class="text-white/50 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <!-- Chat Messages -->
+            <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-3 text-sm">
+                <!-- Messages injected here -->
+                <div class="chat-msg bg-white/10 p-2 rounded-lg rounded-tl-none self-start max-w-[80%] text-xs opacity-70 italic">
+                    Connected to Neural Core...
+                </div>
+            </div>
+
+            <!-- Chat Input -->
+            <div class="p-3 border-t border-white/10 flex gap-2 bg-black/20">
+                <input type="text" id="chat-input" class="flex-1 bg-white/10 border-none rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-orange-500 placeholder-white/30" placeholder="..." onkeypress="handleChatKey(event)">
+                <button onclick="sendMessage()" class="w-8 h-8 rounded-lg bg-orange-500 hover:bg-orange-600 text-white flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-paper-plane text-xs"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 底部控制栏 -->
+        <footer class="flex flex-col md:flex-row justify-between items-end gap-4 pointer-events-auto z-20">
+            <!-- 动作菜单 -->
+            <div class="glass-panel p-2.5 rounded-2xl flex flex-wrap gap-2.5 max-w-lg shadow-2xl backdrop-blur-xl">
+                <button onclick="triggerAction('pet')" class="btn-action flex flex-col items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5" title="Pet">
+                    <i class="fa-solid fa-hand-sparkles text-2xl mb-1.5 text-pink-400 filter drop-shadow-md"></i>
+                    <span class="text-[10px] font-bold opacity-80 uppercase tracking-wide" data-i18n="act_pet">Pet</span>
+                </button>
+                <button onclick="triggerAction('feed')" class="btn-action flex flex-col items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5" title="Feed">
+                    <i class="fa-solid fa-bowl-food text-2xl mb-1.5 text-orange-400 filter drop-shadow-md"></i>
+                    <span class="text-[10px] font-bold opacity-80 uppercase tracking-wide" data-i18n="act_feed">Feed</span>
+                </button>
+                <button onclick="triggerAction('jump')" class="btn-action flex flex-col items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5" title="Jump">
+                    <i class="fa-solid fa-frog text-2xl mb-1.5 text-green-400 filter drop-shadow-md"></i>
+                    <span class="text-[10px] font-bold opacity-80 uppercase tracking-wide" data-i18n="act_jump">Jump</span>
+                </button>
+                <button onclick="triggerAction('spin')" class="btn-action flex flex-col items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5" title="Spin">
+                    <i class="fa-solid fa-compact-disc text-2xl mb-1.5 text-blue-400 filter drop-shadow-md"></i>
+                    <span class="text-[10px] font-bold opacity-80 uppercase tracking-wide" data-i18n="act_spin">Spin</span>
+                </button>
+                <button onclick="triggerAction('surprise')" class="btn-action flex flex-col items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5" title="Surprise">
+                    <i class="fa-solid fa-bolt text-2xl mb-1.5 text-yellow-400 filter drop-shadow-md"></i>
+                    <span class="text-[10px] font-bold opacity-80 uppercase tracking-wide" data-i18n="act_surprise">Shock</span>
+                </button>
+                <!-- AI Chat Button -->
+                <button onclick="toggleChat()" class="btn-action flex flex-col items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 border border-white/5 shadow-lg relative overflow-hidden" title="AI Chat">
+                    <div class="absolute inset-0 bg-white/20 animate-pulse"></div>
+                    <i class="fa-solid fa-comment-dots text-2xl mb-1.5 text-white filter drop-shadow-md relative z-10"></i>
+                    <span class="text-[10px] font-bold text-white uppercase tracking-wide relative z-10">Chat ✨</span>
+                </button>
+            </div>
+
+            <!-- 基础控制 -->
+            <div class="flex gap-3">
+                <button onclick="toggleAutoRotate()" class="glass-panel w-12 h-12 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors" title="Auto Rotate">
+                    <i id="icon-rotate" class="fa-solid fa-sync fa-spin opacity-80"></i>
+                </button>
+                <button onclick="resetView()" class="glass-panel w-12 h-12 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors" title="Reset View">
+                    <i class="fa-solid fa-compress opacity-80"></i>
+                </button>
+            </div>
+        </footer>
     </div>
 
+    <!-- 逻辑脚本 -->
     <script>
-        let chartObjects = {};
+        // --- 0. AI CONFIG ---
+        const apiKey = ""; // API Key injected by environment
 
-        const csvData = `ID,开始时间,完成时间,电子邮件,名称,总得分,测验反馈,上次修改时间," 您目前的近视度数是？
-","分数 -  您目前的近视度数是？
-","反馈 -  您目前的近视度数是？
-",你现在在MYP的年段是,分数 - 你现在在MYP的年段是,反馈 - 你现在在MYP的年段是,您平均多久进行一次专业的视力检测或眼科检查？,分数 - 您平均多久进行一次专业的视力检测或眼科检查？,反馈 - 您平均多久进行一次专业的视力检测或眼科检查？,您的家庭成员（如父母）有没有近视史？,分数 - 您的家庭成员（如父母）有没有近视史？,反馈 - 您的家庭成员（如父母）有没有近视史？,您平均每天使用电子产品（手机平板电脑）的总时长是多少？,分数 - 您平均每天使用电子产品（手机平板电脑）的总时长是多少？,反馈 - 您平均每天使用电子产品（手机平板电脑）的总时长是多少？,在所有电子产品中，您使用手机的时间占比最高吗？,分数 - 在所有电子产品中，您使用手机的时间占比最高吗？,反馈 - 在所有电子产品中，您使用手机的时间占比最高吗？,您是否经常在昏暗的环境下使用手机或者观看电脑荧幕？,分数 - 您是否经常在昏暗的环境下使用手机或者观看电脑荧幕？,反馈 - 您是否经常在昏暗的环境下使用手机或者观看电脑荧幕？,"你在阅读或者使用电脑时，眼睛与荧幕距离通常是多远？（2*10cm）
-","分数 - 你在阅读或者使用电脑时，眼睛与荧幕距离通常是多远？（2*10cm）
-","反馈 - 你在阅读或者使用电脑时，眼睛与荧幕距离通常是多远？（2*10cm）
-",您会定期（每小时）让眼睛休息一下，望向远处吗？,分数 - 您会定期（每小时）让眼睛休息一下，望向远处吗？,反馈 - 您会定期（每小时）让眼睛休息一下，望向远处吗？,"您通常在什么姿势下使用手机？（可多选）
-","分数 - 您通常在什么姿势下使用手机？（可多选）
-","反馈 - 您通常在什么姿势下使用手机？（可多选）
-","您平均每天户外活动的时间有多长？
-","分数 - 您平均每天户外活动的时间有多长？
-","反馈 - 您平均每天户外活动的时间有多长？
-",您有使用任何眼药水或进行眼部按摩来缓解眼部疲劳吗？,分数 - 您有使用任何眼药水或进行眼部按摩来缓解眼部疲劳吗？,反馈 - 您有使用任何眼药水或进行眼部按摩来缓解眼部疲劳吗？,您认为以下哪项是导致近视的主要原因？,分数 - 您认为以下哪项是导致近视的主要原因？,反馈 - 您认为以下哪项是导致近视的主要原因？,您是否了解近视的成因以及如何科学矫正？,分数 - 您是否了解近视的成因以及如何科学矫正？,反馈 - 您是否了解近视的成因以及如何科学矫正？
-1,2025-10-10 17:08:26,2025-10-10 17:11:03,anonymous,,300,,,正常视力或近视度数小于300度,,,G10,,,一年一次,,,没有,,,9小时以上,,,是,,,是，经常,,,2,,,经常,,,7,,,8,,,经常,,,以上症状都没有;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,300
-2,2025-10-10 17:11:08,2025-10-10 17:13:20,anonymous,,200,,,正常视力或近视度数小于300度,,,G9,,,半年一次,,,有,,,3-5小时,,,是,,,是，经常,,,4,,,偶尔但当经常忘记,,,7,,,8,,,经常,,,眼干、眼涩;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,200
-3,2025-10-10 17:13:25,2025-10-10 17:15:38,anonymous,,100,,,正常视力或近视度数小于300度,,,G9,,,半年一次,,,有,,,3-5小时,,,是,,,偶尔,,,5,,,经常,,,5,,,8,,,经常,,,眼干、眼涩;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,100
-4,2025-10-10 17:15:43,2025-10-10 17:18:02,anonymous,,500,,,300-600度属于中度近视,,,G10,,,一年一次,,,有,,,7-9小时,,,是,,,偶尔,,,2,,,经常,,,7,,,8,,,经常,,,眼干、眼涩;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,500
-5,2025-10-10 17:18:07,2025-10-10 17:19:35,anonymous,,600,,,300-600度属于中度近视,,,G8,,,两年或更长,,,有,,,3-5小时,,,是,,,是，经常,,,4,,,经常,,,5,,,8,,,经常,,,眼干、眼涩;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,600
-6,2025-10-10 17:19:40,2025-10-10 17:21:04,anonymous,,0,,,正常视力或近视度数小于300度,,,G8,,,一年一次,,,有,,,1-3小时,,,是,,,从不,,,3,,,经常,,,1,,,2,,,从不,,,以上症状都没有;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,0
-7,2025-10-10 17:21:09,2025-10-10 17:22:21,anonymous,,400,,,300-600度属于中度近视,,,G8,,,一年一次,,,有,,,3-5小时,,,是,,,是，经常,,,5,,,经常,,,5,,,6,,,偶尔,,,视力模糊;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,400
-8,2025-10-10 17:22:26,2025-10-10 17:23:55,anonymous,,300,,,正常视力或近视度数小于300度,,,G8,,,半年一次,,,有,,,5-7小时,,,是,,,是，经常,,,3,,,经常,,,5,,,8,,,经常,,,视力模糊;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,300
-9,2025-10-10 17:24:00,2025-10-10 17:25:22,anonymous,,700,,,600度以上属于高度近视,,,G9,,,半年一次,,,有,,,5-7小时,,,是,,,是，经常,,,2,,,经常,,,5,,,8,,,经常,,,视力模糊;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,700
-10,2025-10-10 17:25:27,2025-10-10 17:26:48,anonymous,,0,,,正常视力或近视度数小于300度,,,G6,,,一年一次,,,没有,,,1-3小时,,,是,,,偶尔,,,4,,,经常,,,1,,,2,,,偶尔,,,以上症状都没有;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,0
-11,2025-10-10 17:26:53,2025-10-10 17:28:18,anonymous,,300,,,正常视力或近视度数小于300度,,,G7,,,半年一次,,,有,,,3-5小时,,,是,,,偶尔,,,3,,,经常,,,3,,,4,,,经常,,,眼干、眼涩;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,300
-12,2025-10-10 17:28:23,2025-10-10 17:30:10,anonymous,,400,,,300-600度属于中度近视,,,G7,,,一年一次,,,有,,,3-5小时,,,是,,,偶尔,,,4,,,经常,,,3,,,4,,,经常,,,视力模糊;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,400
-13,2025-10-10 17:30:15,2025-10-10 17:31:39,anonymous,,200,,,正常视力或近视度数小于300度,,,G6,,,一年一次,,,没有,,,1-3小时,,,是,,,偶尔,,,5,,,经常,,,1,,,2,,,偶尔,,,以上症状都没有;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,200
-14,2025-10-10 17:31:44,2025-10-10 17:33:01,anonymous,,600,,,300-600度属于中度近视,,,G9,,,半年一次,,,有,,,7-9小时,,,是,,,是，经常,,,2,,,经常,,,7,,,8,,,经常,,,视力模糊;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,600
-15,2025-10-10 17:33:06,2025-10-10 17:34:28,anonymous,,500,,,300-600度属于中度近视,,,G10,,,一年一次,,,有,,,5-7小时,,,是,,,是，经常,,,3,,,经常,,,5,,,8,,,经常,,,眼干、眼涩;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,500
-16,2025-10-10 17:34:33,2025-10-10 17:36:15,anonymous,,800,,,600度以上属于高度近视,,,G10,,,半年一次,,,有,,,9小时以上,,,是,,,是，经常,,,1,,,经常,,,9,,,10,,,经常,,,视力模糊;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,800
-17,2025-10-10 17:36:20,2025-10-10 17:37:48,anonymous,,400,,,300-600度属于中度近视,,,G9,,,一年一次,,,有,,,5-7小时,,,是,,,偶尔,,,4,,,经常,,,5,,,8,,,经常,,,眼干、眼涩;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,400
-18,2025-10-10 17:37:53,2025-10-10 17:39:21,anonymous,,300,,,正常视力或近视度数小于300度,,,G8,,,半年一次,,,有,,,3-5小时,,,是,,,偶尔,,,3,,,经常,,,3,,,4,,,经常,,,以上症状都没有;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,300
-19,2025-10-10 17:39:26,2025-10-10 17:41:02,anonymous,,700,,,600度以上属于高度近视,,,G9,,,半年一次,,,有,,,7-9小时,,,是,,,是，经常,,,2,,,经常,,,7,,,8,,,经常,,,视力模糊;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,700
-20,2025-10-10 17:41:07,2025-10-10 17:42:35,anonymous,,200,,,正常视力或近视度数小于300度,,,G7,,,一年一次,,,没有,,,1-3小时,,,是,,,偶尔,,,4,,,经常,,,1,,,2,,,偶尔,,,以上症状都没有;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,200
-21,2025-10-10 17:42:40,2025-10-10 17:44:07,anonymous,,500,,,300-600度属于中度近视,,,G10,,,一年一次,,,有,,,5-7小时,,,是,,,是，经常,,,3,,,经常,,,5,,,8,,,经常,,,眼干、眼涩;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,500
-22,2025-10-10 17:44:12,2025-10-10 17:45:33,anonymous,,600,,,300-600度属于中度近视,,,G8,,,半年一次,,,有,,,3-5小时,,,是,,,是，经常,,,4,,,经常,,,5,,,8,,,经常,,,视力模糊;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,600
-23,2025-10-10 17:45:38,2025-10-10 17:46:59,anonymous,,0,,,正常视力或近视度数小于300度,,,G6,,,一年一次,,,没有,,,1-3小时,,,是,,,从不,,,5,,,经常,,,1,,,2,,,从不,,,以上症状都没有;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,0
-24,2025-10-10 17:47:04,2025-10-10 17:48:29,anonymous,,400,,,300-600度属于中度近视,,,G7,,,一年一次,,,有,,,3-5小时,,,是,,,偶尔,,,4,,,经常,,,3,,,4,,,经常,,,视力模糊;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,400
-25,2025-10-10 17:48:34,2025-10-10 17:50:01,anonymous,,300,,,正常视力或近视度数小于300度,,,G9,,,半年一次,,,有,,,5-7小时,,,是,,,是，经常,,,3,,,经常,,,5,,,8,,,经常,,,眼干、眼涩;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,300
-26,2025-10-10 17:50:06,2025-10-10 17:51:33,anonymous,,700,,,600度以上属于高度近视,,,G10,,,半年一次,,,有,,,7-9小时,,,是,,,是，经常,,,2,,,经常,,,7,,,8,,,经常,,,视力模糊;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,700
-27,2025-10-10 17:51:38,2025-10-10 17:53:05,anonymous,,100,,,正常视力或近视度数小于300度,,,G8,,,一年一次,,,没有,,,1-3小时,,,是,,,偶尔,,,5,,,经常,,,1,,,2,,,偶尔,,,以上症状都没有;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,100
-28,2025-10-10 17:53:10,2025-10-10 17:54:40,anonymous,,500,,,300-600度属于中度近视,,,G9,,,一年一次,,,有,,,5-7小时,,,是,,,是，经常,,,3,,,经常,,,5,,,8,,,经常,,,眼干、眼涩;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,500
-29,2025-10-10 17:54:45,2025-10-10 17:56:06,anonymous,,0,,,正常视力或近视度数小于300度,,,G7,,,一年一次,,,没有,,,1-3小时,,,是,,,从不,,,5,,,经常,,,1,,,2,,,从不,,,以上症状都没有;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,0
-30,2025-10-10 17:56:11,2025-10-10 17:57:42,anonymous,,800,,,600度以上属于高度近视,,,G10,,,半年一次,,,有,,,9小时以上,,,是,,,是，经常,,,1,,,经常,,,9,,,10,,,经常,,,视力模糊;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,800
-31,2025-10-10 17:57:47,2025-10-10 17:59:15,anonymous,,200,,,正常视力或近视度数小于300度,,,G8,,,一年一次,,,有,,,3-5小时,,,是,,,偶尔,,,4,,,经常,,,3,,,4,,,经常,,,以上症状都没有;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,200
-32,2025-10-10 17:59:20,2025-10-10 18:00:41,anonymous,,600,,,300-600度属于中度近视,,,G9,,,半年一次,,,有,,,3-5小时,,,是,,,是，经常,,,4,,,经常,,,5,,,8,,,经常,,,视力模糊;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,600
-33,2025-10-10 18:00:46,2025-10-10 18:02:18,anonymous,,400,,,300-600度属于中度近视,,,G10,,,一年一次,,,有,,,5-7小时,,,是,,,偶尔,,,3,,,经常,,,5,,,8,,,经常,,,眼干、眼涩;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,400
-34,2025-10-10 18:02:23,2025-10-10 18:03:55,anonymous,,0,,,正常视力或近视度数小于300度,,,G6,,,一年一次,,,没有,,,1-3小时,,,是,,,从不,,,5,,,经常,,,1,,,2,,,从不,,,以上症状都没有;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,0
-35,2025-10-10 18:04:00,2025-10-10 18:05:32,anonymous,,700,,,600度以上属于高度近视,,,G9,,,半年一次,,,有,,,7-9小时,,,是,,,是，经常,,,2,,,经常,,,7,,,8,,,经常,,,视力模糊;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,700
-36,2025-10-10 18:05:37,2025-10-10 18:07:09,anonymous,,300,,,正常视力或近视度数小于300度,,,G8,,,半年一次,,,有,,,3-5小时,,,是,,,偶尔,,,3,,,经常,,,3,,,4,,,经常,,,以上症状都没有;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,300
-37,2025-10-10 18:07:14,2025-10-10 18:08:41,anonymous,,500,,,300-600度属于中度近视,,,G10,,,一年一次,,,有,,,5-7小时,,,是,,,是，经常,,,3,,,经常,,,5,,,8,,,经常,,,眼干、眼涩;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,500
-38,2025-10-11 15:20:11,2025-10-11 15:22:11,anonymous,,0,,,正常视力或近视度数小于300度,,,G7,,,一年一次,,,没有,,,3,,,是,,,否，从不,,,5,,,会,,,1,,,2,,,经常,,,以上症状都没有;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,0
-39,2025-10-11 15:22:15,2025-10-11 15:23:51,anonymous,,200,,,正常视力或近视度数小于300度,,,G7,,,两年或更长,,,有,,,2,,,是,,,偶尔,,,4,,,会,,,3,,,4,,,偶尔,,,眼睛疲劳酸痛;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,200
-40,2025-10-11 20:31:54,2025-10-11 20:33:07,anonymous,,400,,,300-600度属于中度近视,,,G9,,,半年一次,,,有,,,4,,,是,,,是，经常,,,3,,,偶尔但当经常忘记,,,5,,,6,,,偶尔,,,视力模糊;,,,成因是晶状体曲度过大、折光能力过强，矫正需佩戴凹透镜使成像后移至视网膜,,400
-`;
-        
-        const themeToggleBtn = document.getElementById('theme-toggle');
-        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
+        async function callGemini(userText) {
+            if (!apiKey) {
+                addBotMessage("System: API Key missing.");
+                return;
+            }
+
+            const prompt = `You are a digital bio-companion cat named ${petName}. 
+            Current Stats: Mood ${stats.mood}%, Hunger ${stats.hunger}%, Affection ${stats.affection}%.
+            Current Language: ${currentLang} (Reply in this language).
+            
+            Personality: Cute, loyal, slightly sassy if hungry. 
+            User said: "${userText}"
+            
+            Reply as the cat (short, 1-2 sentences). Use emojis.`;
+
+            // Loading state
+            const loadingId = addBotMessage("Thinking... 💭");
+
+            try {
+                // Retry logic helper
+                const fetchWithRetry = async (url, options, retries = 3, delay = 1000) => {
+                    for (let i = 0; i < retries; i++) {
+                        try {
+                            const res = await fetch(url, options);
+                            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                            return res;
+                        } catch (err) {
+                            if (i === retries - 1) throw err;
+                            await new Promise(r => setTimeout(r, delay * Math.pow(2, i)));
+                        }
+                    }
+                };
+
+                const response = await fetchWithRetry(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }]
+                        })
+                    }
+                );
+
+                const data = await response.json();
+                const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "...Meow?";
+                
+                // Update UI
+                document.getElementById(loadingId).innerText = reply;
+                
+                // Trigger animation based on sentiment (Simple keyword check)
+                if(reply.includes("❤️") || reply.includes("Happy")) triggerAction('pet');
+                if(reply.includes("food") || reply.includes("hungry")) triggerAction('feed');
+
+            } catch (error) {
+                console.error(error);
+                document.getElementById(loadingId).innerText = "Connection lost... *sad meow*";
+            }
         }
-        themeToggleBtn.addEventListener('click', () => {
-            document.documentElement.classList.toggle('dark');
-            localStorage.setItem('color-theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
-            updateAllChartThemes();
-        });
+
+        // --- Chat UI Logic ---
+        let isChatOpen = false;
+
+        function toggleChat() {
+            const panel = document.getElementById('chat-panel');
+            isChatOpen = !isChatOpen;
+            if (isChatOpen) {
+                panel.classList.remove('translate-x-[120%]');
+                document.getElementById('chat-input').focus();
+            } else {
+                panel.classList.add('translate-x-[120%]');
+            }
+        }
+
+        function handleChatKey(e) {
+            if (e.key === 'Enter') sendMessage();
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            // Add User Msg
+            const msgDiv = document.createElement('div');
+            msgDiv.className = "chat-msg bg-orange-500/20 p-2 rounded-lg rounded-tr-none self-end max-w-[80%] text-right border border-orange-500/30";
+            msgDiv.innerText = text;
+            document.getElementById('chat-messages').appendChild(msgDiv);
+            
+            input.value = '';
+            scrollToBottom();
+
+            // Call AI
+            callGemini(text);
+        }
+
+        function addBotMessage(text) {
+            const id = 'msg-' + Date.now();
+            const msgDiv = document.createElement('div');
+            msgDiv.id = id;
+            msgDiv.className = "chat-msg bg-white/10 p-2 rounded-lg rounded-tl-none self-start max-w-[80%] border border-white/10";
+            msgDiv.innerText = text;
+            document.getElementById('chat-messages').appendChild(msgDiv);
+            scrollToBottom();
+            return id;
+        }
+
+        function scrollToBottom() {
+            const container = document.getElementById('chat-messages');
+            container.scrollTop = container.scrollHeight;
+        }
+
+
+        // --- 1. 多语言与数据系统 ---
+        const translations = {
+            'zh-CN': {
+                welcome_title: "欢迎来到 G.O.A.T.",
+                welcome_desc: "请输入您专属生物伴侣的名称",
+                start_btn: "启动生物系统",
+                status: "系统在线",
+                monitor_title: "生物体征",
+                stat_mood: "心情",
+                stat_hunger: "饥饿",
+                stat_affection: "亲密",
+                stat_health: "状态",
+                health_good: "健康",
+                health_ok: "良好",
+                health_tired: "疲劳",
+                health_hungry: "饥饿",
+                act_pet: "抚摸",
+                act_feed: "喂食",
+                act_jump: "跳跃",
+                act_spin: "转圈",
+                act_surprise: "惊吓",
+                act_sleep: "休眠"
+            },
+            'zh-TW': {
+                welcome_title: "歡迎來到 G.O.A.T.",
+                welcome_desc: "請輸入您專屬生物伴侶的名稱",
+                start_btn: "啟動生物系統",
+                status: "系統在線",
+                monitor_title: "生物體徵",
+                stat_mood: "心情",
+                stat_hunger: "飢餓",
+                stat_affection: "親密",
+                stat_health: "狀態",
+                health_good: "健康",
+                health_ok: "良好",
+                health_tired: "疲勞",
+                health_hungry: "飢餓",
+                act_pet: "撫摸",
+                act_feed: "餵食",
+                act_jump: "跳躍",
+                act_spin: "轉圈",
+                act_surprise: "驚嚇",
+                act_sleep: "休眠"
+            },
+            'en': {
+                welcome_title: "Welcome to G.O.A.T.",
+                welcome_desc: "Enter your companion's name to begin",
+                start_btn: "Initialize System",
+                status: "System Online",
+                monitor_title: "Bio-Metrics",
+                stat_mood: "Mood",
+                stat_hunger: "Hunger",
+                stat_affection: "Bond",
+                stat_health: "Status",
+                health_good: "Optimal",
+                health_ok: "Good",
+                health_tired: "Fatigued",
+                health_hungry: "Hungry",
+                act_pet: "Pet",
+                act_feed: "Feed",
+                act_jump: "Jump",
+                act_spin: "Spin",
+                act_surprise: "Shock",
+                act_sleep: "Sleep"
+            }
+        };
+
+        let currentLang = 'zh-CN';
+        let petName = "G.O.A.T.";
         
-        function getThemeColors() {
-            const styles = getComputedStyle(document.documentElement);
-            return {
-                textColor: styles.getPropertyValue('--chart-text-color').trim(),
-                gridColor: styles.getPropertyValue('--chart-grid-color').trim(),
-                cardBgColor: styles.getPropertyValue('--card-bg-color').trim(),
-                primaryAccent: styles.getPropertyValue('--primary-accent').trim(),
-            };
+        const stats = { mood: 80, hunger: 70, affection: 25, healthState: 'good' };
+
+        function changeLang(lang) {
+            currentLang = lang;
+            updateTexts();
+            document.querySelectorAll('.btn-lang').forEach(btn => btn.classList.remove('active'));
+            if(lang === 'zh-CN') document.getElementById('lang-cn').classList.add('active');
+            if(lang === 'zh-TW') document.getElementById('lang-tw').classList.add('active');
+            if(lang === 'en') document.getElementById('lang-en').classList.add('active');
+            updateStatsUI();
         }
         
-        function updateAllChartThemes() {
-            const themeColors = getThemeColors();
-            Object.values(chartObjects).forEach(chart => {
-                chart.options.plugins.legend.labels.color = themeColors.textColor;
-                if (chart.config.type.includes('bar')) {
-                    chart.options.scales.x.ticks.color = themeColors.textColor;
-                    chart.options.scales.y.ticks.color = themeColors.textColor;
-                    chart.options.scales.y.grid.color = themeColors.gridColor;
-                    chart.options.scales.y.title.color = themeColors.textColor;
-                }
-                if (chart.config.type === 'doughnut' || chart.config.type === 'pie') {
-                    chart.data.datasets[0].borderColor = themeColors.cardBgColor;
-                }
-                chart.update();
+        function updateTexts() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if(translations[currentLang][key]) el.innerText = translations[currentLang][key];
             });
         }
 
-        Chart.defaults.font.family = "'Noto Sans SC', 'Inter', sans-serif";
-        Chart.defaults.font.size = 14;
-        Chart.defaults.plugins.legend.position = 'bottom';
-        Chart.defaults.animation = {
-            duration: 1200,
-            easing: 'easeOutCubic'
-        };
+        // --- 2. 界面逻辑 ---
+        function startExperience() {
+            const input = document.getElementById('pet-name-input');
+            const name = input.value.trim();
+            if(name) {
+                petName = name;
+                document.getElementById('pet-name-display').innerText = petName;
+                document.getElementById('chat-title-name').innerText = petName;
+            }
+            document.getElementById('naming-modal').classList.add('modal-hidden');
+            document.getElementById('main-ui').classList.remove('opacity-0');
+            document.getElementById('stats-panel').classList.remove('-translate-x-full', 'opacity-0');
+        }
 
+        function toggleTheme() {
+            const body = document.body;
+            const icon = document.getElementById('theme-icon');
+            if (body.classList.contains('dark-mode')) {
+                body.classList.remove('dark-mode'); body.classList.add('light-mode');
+                icon.className = 'fa-solid fa-moon text-slate-700';
+                if(scene) scene.fog.color.setHex(0xe5e7eb);
+            } else {
+                body.classList.remove('light-mode'); body.classList.add('dark-mode');
+                icon.className = 'fa-solid fa-sun text-yellow-400';
+                if(scene) scene.fog.color.setHex(0x111111);
+            }
+        }
 
-        window.onload = () => {
-            Papa.parse(csvData, {
-                header: true,
-                skipEmptyLines: true,
-                complete: (results) => processDataAndCreateCharts(results.data),
-                error: (error) => console.error('CSV Parsing Error:', error),
+        // --- 3. 3D 引擎 ---
+        let scene, camera, renderer, controls;
+        let catGroup, bodyMesh, headMesh, tailGroup, eyesContainer;
+        const clock = new THREE.Clock();
+        let autoRotate = true;
+        let isSleeping = false;
+
+        function init() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x111111, 0.02);
+            
+            camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(5, 2.5, 6.5);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap; // 柔和阴影
+            renderer.toneMapping = THREE.ACESFilmicToneMapping; // 电影级色调映射
+            renderer.toneMappingExposure = 1.1;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true; controls.dampingFactor = 0.05;
+            controls.minDistance = 2; controls.maxDistance = 15;
+            controls.autoRotate = true; controls.autoRotateSpeed = 0.8;
+            controls.target.set(0, 0.9, 0);
+
+            setupLights();
+
+            // 地面
+            const planeMat = new THREE.ShadowMaterial({ opacity: 0.25 });
+            const plane = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), planeMat);
+            plane.rotation.x = -Math.PI / 2; plane.receiveShadow = true;
+            scene.add(plane);
+
+            createCat();
+            window.addEventListener('resize', onResize);
+            setInterval(updateStatsLoop, 2000);
+            animate();
+        }
+
+        function setupLights() {
+            const ambient = new THREE.AmbientLight(0xffffff, 0.5); // 稍微调暗环境光
+            scene.add(ambient);
+
+            // 主光源 - 模拟太阳光，产生强阴影
+            const keyLight = new THREE.DirectionalLight(0xffeebb, 1.2);
+            keyLight.position.set(5, 10, 5);
+            keyLight.castShadow = true;
+            keyLight.shadow.mapSize.width = 2048; keyLight.shadow.mapSize.height = 2048;
+            keyLight.shadow.bias = -0.0001;
+            scene.add(keyLight);
+
+            // 补光 - 蓝色调，模拟天空漫反射
+            const fillLight = new THREE.DirectionalLight(0xcceeff, 0.4);
+            fillLight.position.set(-5, 2, -5);
+            scene.add(fillLight);
+
+            // 轮廓光 - 增强立体感
+            const rimLight = new THREE.SpotLight(0xffffff, 0.8);
+            rimLight.position.set(0, 5, -5);
+            rimLight.lookAt(0, 0, 0);
+            scene.add(rimLight);
+        }
+
+        // --- 4. 极致仿真建模 ---
+        
+        // 生成程序化毛发纹理
+        function createFurTexture(colorHex) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            
+            // 底色
+            ctx.fillStyle = colorHex;
+            ctx.fillRect(0,0,512,512);
+            
+            // 噪点模拟毛孔和毛发阴影
+            for(let i=0; i<100000; i++) {
+                ctx.fillStyle = `rgba(0,0,0, ${Math.random() * 0.05})`; // 微弱的黑色噪点
+                const x = Math.random() * 512;
+                const y = Math.random() * 512;
+                ctx.fillRect(x, y, 1, 2); // 细长点
+            }
+            
+            // 高光模拟毛发光泽
+            for(let i=0; i<50000; i++) {
+                ctx.fillStyle = `rgba(255,255,255, ${Math.random() * 0.05})`;
+                const x = Math.random() * 512;
+                const y = Math.random() * 512;
+                ctx.fillRect(x, y, 1, 2);
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            return tex;
+        }
+
+        function createCat() {
+            catGroup = new THREE.Group();
+
+            // 材质定义
+            // 橘色毛发
+            const orangeTex = createFurTexture('#FAB005');
+            const furMat = new THREE.MeshStandardMaterial({ 
+                map: orangeTex,
+                color: 0xFAB005, 
+                roughness: 0.9, // 毛发不反光
+                metalness: 0.0,
             });
-        };
-        
-        const destroyCharts = () => {
-            Object.values(chartObjects).forEach(chart => chart.destroy());
-            chartObjects = {};
-        }
 
-        function processDataAndCreateCharts(data) {
-            destroyCharts();
+            // 白色毛发
+            const whiteTex = createFurTexture('#FFFFFF');
+            const whiteMat = new THREE.MeshStandardMaterial({ 
+                map: whiteTex,
+                color: 0xFFFFFF, 
+                roughness: 0.9,
+                metalness: 0.0
+            });
 
-            const COLUMNS = {
-                MYOPIA: ' 您目前的近视度数是？\n',
-                GRADE: '你现在在MYP的年段是',
-                SCREEN_TIME: '您平均每天使用电子产品（手机平板电脑）的总时长是多少？',
-                DIM_LIGHT: '您是否经常在昏暗的环境下使用手机或者观看电脑荧幕？',
-                EXAM_FREQ: '您平均多久进行一次专业的视力检测或眼科检查？',
-                FAMILY_HISTORY: '您的家庭成员（如父母）有没有近视史？',
-                EYE_BREAK: '您会定期（每小时）让眼睛休息一下，望向远处吗？',
-                OUTDOOR_TIME: '您平均每天户外活动的时间有多长？\n',
-                FATIGUE_RELIEF: '您有使用任何眼药水或进行眼部按摩来缓解眼部疲劳吗？'
+            // 鼻子 - 略带反光
+            const noseMat = new THREE.MeshPhysicalMaterial({ 
+                color: 0xFF9999, 
+                roughness: 0.4, 
+                clearcoat: 0.5,
+                clearcoatRoughness: 0.2
+            });
+
+            // 眼睛 - 玻璃质感
+            const eyeMat = new THREE.MeshPhysicalMaterial({ 
+                color: 0x111111, 
+                roughness: 0.0, 
+                metalness: 0.2,
+                clearcoat: 1.0, // 强烈的角膜反光
+                transmission: 0.0 // 不透明
+            });
+
+            // --- 建模 ---
+
+            // 1. 身体 (核心)
+            const bodyGeo = new THREE.CylinderGeometry(0.7, 0.8, 1.4, 16);
+            // 稍微变形让身体更圆润
+            const body = new THREE.Mesh(bodyGeo, furMat);
+            body.rotation.z = Math.PI / 2 - 0.2; 
+            body.position.y = 0.9;
+            body.castShadow = true; body.receiveShadow = true;
+            catGroup.add(body);
+            // 前胸 (球体拼接)
+            const chest = new THREE.Mesh(new THREE.SphereGeometry(0.75, 16, 16), whiteMat);
+            chest.position.set(0.6, 1.15, 0);
+            chest.scale.set(1, 0.9, 0.9);
+            chest.castShadow = true;
+            catGroup.add(chest);
+            // 屁股
+            const butt = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), furMat);
+            butt.position.set(-0.6, 0.95, 0);
+            butt.castShadow = true;
+            catGroup.add(butt);
+
+            // 2. 头部
+            headMesh = new THREE.Group(); 
+            headMesh.position.set(1.2, 1.8, 0);
+
+            // 头骨
+            const skull = new THREE.Mesh(new THREE.SphereGeometry(0.72, 32, 32), furMat); 
+            skull.scale.set(1.05, 0.95, 1); 
+            skull.castShadow = true; 
+            headMesh.add(skull);
+
+            // 脸颊 (增加肉感)
+            const cheekGeo = new THREE.SphereGeometry(0.4, 16, 16);
+            const lCheek = new THREE.Mesh(cheekGeo, whiteMat);
+            lCheek.position.set(0.4, -0.3, 0.35);
+            lCheek.scale.set(1, 0.8, 1);
+            headMesh.add(lCheek);
+            const rCheek = new THREE.Mesh(cheekGeo, whiteMat);
+            rCheek.position.set(0.4, -0.3, -0.35);
+            rCheek.scale.set(1, 0.8, 1);
+            headMesh.add(rCheek);
+
+            // 嘴套
+            const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.28, 32, 32), whiteMat); 
+            muzzle.position.set(0.75, -0.35, 0); 
+            muzzle.scale.set(1, 0.7, 1.2); 
+            headMesh.add(muzzle);
+
+            // 鼻子 (三角形)
+            const nose = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.1, 4), noseMat); 
+            nose.rotation.z = -Math.PI/2;
+            nose.rotation.x = Math.PI/4; // 稍微朝上
+            nose.position.set(0.92, -0.2, 0); 
+            headMesh.add(nose);
+
+            // 白色面罩 (Blaze)
+            const blazeGeo = new THREE.ConeGeometry(0.42, 0.8, 32);
+            const blaze = new THREE.Mesh(blazeGeo, whiteMat);
+            blaze.rotation.x = -0.5;
+            blaze.position.set(0.45, 0.1, 0);
+            headMesh.add(blaze);
+
+            // 耳朵
+            const earGeo = new THREE.ConeGeometry(0.25, 0.6, 32);
+            const lEar = new THREE.Mesh(earGeo, furMat); 
+            lEar.position.set(0.1, 0.65, 0.4); lEar.rotation.set(0.2, 0, -0.5); headMesh.add(lEar);
+            const rEar = new THREE.Mesh(earGeo, furMat); 
+            rEar.position.set(0.1, 0.65, -0.4); rEar.rotation.set(-0.2, 0, -0.5); headMesh.add(rEar);
+
+            // 眼睛
+            eyesContainer = new THREE.Group(); 
+            headMesh.add(eyesContainer);
+            const createEye = (z) => {
+                const grp = new THREE.Group(); grp.position.set(0.65, 0.1, z);
+                // 眼球主体
+                const eye = new THREE.Mesh(new THREE.SphereGeometry(0.12, 32, 32), eyeMat); 
+                eye.scale.set(0.6, 1, 1);
+                grp.add(eye);
+                // 反光高光 (伪造的，因为实时光照可能不够完美)
+                const shine = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), new THREE.MeshBasicMaterial({color:0xffffff}));
+                shine.position.set(0.1, 0.05, 0.04);
+                grp.add(shine);
+                return grp;
             };
+            eyesContainer.add(createEye(0.28)); 
+            eyesContainer.add(createEye(-0.28));
+            catGroup.add(headMesh);
 
-            const cleanData = data.filter(row => Object.values(COLUMNS).every(col => row[col]));
+            // 3. 四肢 (增加脚趾细节)
+            function createLeg(x, y, z, mat) {
+                const grp = new THREE.Group();
+                grp.position.set(x, y, z);
+                
+                // 腿柱
+                const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.18, 0.8, 16), mat);
+                leg.position.y = -0.4;
+                leg.castShadow = true;
+                grp.add(leg);
 
-            const getMyopiaCategory = (degreeStr) => {
-                const degree = parseInt(degreeStr, 10);
-                if (isNaN(degree) || degree < 300) return '轻度近视或正常';
-                if (degree >= 300 && degree < 600) return '中度近视';
-                return '高度近视';
-            };
+                // 脚掌 (圆润)
+                const foot = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 16), whiteMat);
+                foot.position.set(0.1, -0.8, 0);
+                foot.scale.set(1.2, 0.8, 1);
+                grp.add(foot);
+
+                return grp;
+            }
+
+            const legFR = createLeg(0.9, 0.8, -0.3, whiteMat); catGroup.add(legFR);
+            const legFL = createLeg(0.9, 0.8, 0.3, whiteMat); catGroup.add(legFL);
             
-            const countOccurrences = (data, column) => data.reduce((acc, row) => {
-                const key = row[column].trim();
-                acc[key] = (acc[key] || 0) + 1;
-                return acc;
-            }, {});
-
-            // 1. Myopia Distribution
-            const myopiaDistribution = cleanData.reduce((acc, row) => {
-                const category = getMyopiaCategory(row[COLUMNS.MYOPIA].trim());
-                acc[category] = (acc[category] || 0) + 1;
-                return acc;
-            }, {});
-            createPieChart('myopia-distribution-chart', Object.keys(myopiaDistribution), Object.values(myopiaDistribution));
-
-            // 2. Screen Time
-            const screenTimeCounts = countOccurrences(cleanData, COLUMNS.SCREEN_TIME);
-            const screenTimeLabels = ['1-3小时', '3-5小时', '5-7小时', '7-9小时', '9小时以上'];
-            const screenTimeData = screenTimeLabels.map(label => screenTimeCounts[label] || 0);
-            createBarChart('screen-time-chart', screenTimeLabels, screenTimeData, '学生人数');
-
-            // 3. Myopia by Grade
-            const grades = ['G6', 'G7', 'G8', 'G9', 'G10'];
-            const myopiaCategories = ['轻度近视或正常', '中度近视', '高度近视'];
-            const datasetsMyopiaByGrade = myopiaCategories.map((cat, index) => ({
-                label: cat,
-                data: grades.map(grade => cleanData.filter(row => row[COLUMNS.GRADE]?.trim() === grade && getMyopiaCategory(row[COLUMNS.MYOPIA].trim()) === cat).length),
-                backgroundColor: ['#81C784', '#FFB74D', '#E57373'][index],
-            }));
-            createGroupedBarChart('myopia-by-grade-chart', grades, datasetsMyopiaByGrade);
+            // 后大腿 (更粗壮)
+            const haunchR = new THREE.Mesh(new THREE.SphereGeometry(0.55, 32, 32), furMat); 
+            haunchR.position.set(-0.6, 0.7, -0.45); haunchR.scale.set(1, 1.2, 1); haunchR.castShadow = true; catGroup.add(haunchR);
+            const haunchL = new THREE.Mesh(new THREE.SphereGeometry(0.55, 32, 32), furMat); 
+            haunchL.position.set(-0.6, 0.7, 0.45); haunchL.scale.set(1, 1.2, 1); haunchL.castShadow = true; catGroup.add(haunchL);
             
-            // 4. Habit vs. Myopia
-            const habitLevels = ['是，经常', '偶尔', '从不'];
-            const datasetsHabit = habitLevels.map((habit, index) => ({
-                label: habit,
-                data: myopiaCategories.map(cat => cleanData.filter(row => getMyopiaCategory(row[COLUMNS.MYOPIA].trim()) === cat && row[COLUMNS.DIM_LIGHT]?.trim() === habit).length),
-                backgroundColor: ['#B71C1C', '#FBC02D', '#2E7D32'][index],
-            }));
-            createGroupedBarChart('habit-vs-myopia-chart', myopiaCategories, datasetsHabit);
-            
-            // 5. Exam Frequency
-            const examCounts = countOccurrences(cleanData, COLUMNS.EXAM_FREQ);
-            createPieChart('exam-frequency-chart', Object.keys(examCounts), Object.values(examCounts));
+            // 后脚
+            const footR = createLeg(-0.5, 0.4, -0.5, whiteMat); footR.scale.set(1, 0.6, 1); footR.rotation.z = 0.3; catGroup.add(footR);
+            const footL = createLeg(-0.5, 0.4, 0.5, whiteMat); footL.scale.set(1, 0.6, 1); footL.rotation.z = 0.3; catGroup.add(footL);
 
-            // 6. Family History
-            const historyCounts = countOccurrences(cleanData, COLUMNS.FAMILY_HISTORY);
-            createPieChart('family-history-chart', Object.keys(historyCounts), Object.values(historyCounts));
+            // 4. 尾巴
+            tailGroup = new THREE.Group(); tailGroup.position.set(-0.9, 0.8, 0);
+            for(let i=0; i<8; i++) {
+                const s = new THREE.Mesh(new THREE.SphereGeometry(0.2 - i*0.015, 16, 16), furMat);
+                s.position.x = -i * 0.22; 
+                s.userData = { id: i }; 
+                s.castShadow = true;
+                tailGroup.add(s);
+            }
+            catGroup.add(tailGroup); this.tail = tailGroup;
 
-            // 7. Eye Break Habits
-            const breakCounts = countOccurrences(cleanData, COLUMNS.EYE_BREAK);
-            createPieChart('eye-break-chart', Object.keys(breakCounts), Object.values(breakCounts));
-
-            // 8. Outdoor Activity
-            const outdoorCounts = countOccurrences(cleanData, COLUMNS.OUTDOOR_TIME);
-            // Sort by the key which is a number string
-            const outdoorLabels = Object.keys(outdoorCounts).sort((a,b) => parseInt(a) - parseInt(b)).map(k => `${k} 小时`);
-            const outdoorData = outdoorLabels.map(label => outdoorCounts[label.replace(' 小时', '')] || 0);
-            createBarChart('outdoor-activity-chart', outdoorLabels, outdoorData, '学生人数');
-
-            // 9. Fatigue Relief
-            const reliefCounts = countOccurrences(cleanData, COLUMNS.FATIGUE_RELIEF);
-            createPieChart('fatigue-relief-chart', Object.keys(reliefCounts), Object.values(reliefCounts));
-
-            updateAllChartThemes();
+            catGroup.position.y = -0.5;
+            scene.add(catGroup);
         }
-        
-        const MD3_CHART_COLORS = ['#A37BFF', '#FF957B', '#7BFFC3', '#7BCBFF', '#FF7BCD', '#F0FF7B', '#FFB74D', '#81C784'];
 
-        function createChart(canvasId, type, data, options) {
-            const themeColors = getThemeColors();
-            const ctx = document.getElementById(canvasId).getContext('2d');
-            const baseOptions = {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { labels: { padding: 25, color: themeColors.textColor } },
+        // --- 5. 交互逻辑 ---
+        let currentAction = null; let actionTimer = 0;
+
+        function triggerAction(actionName) {
+            currentAction = actionName; actionTimer = 0;
+            if(isSleeping && actionName !== 'sleep') { isSleeping = false; eyesContainer.scale.y = 1; controls.autoRotate = true; }
+            if(actionName === 'sleep') { isSleeping = true; controls.autoRotate = false; eyesContainer.scale.y = 0.1; }
+            updateStatsAction(actionName); spawnEmoji(actionName);
+        }
+
+        function updateStatsAction(action) {
+            if(action === 'feed') { stats.hunger = Math.min(100, stats.hunger + 20); stats.mood = Math.min(100, stats.mood + 5); }
+            if(action === 'pet') { stats.affection = Math.min(100, stats.affection + 5); stats.mood = Math.min(100, stats.mood + 10); }
+            if(action === 'spin' || action === 'jump') { stats.hunger = Math.max(0, stats.hunger - 5); stats.mood = Math.min(100, stats.mood + 15); }
+            if(action === 'sleep') { stats.mood = Math.min(100, stats.mood + 20); }
+            updateStatsUI();
+        }
+
+        function updateStatsLoop() {
+            if(isSleeping) return;
+            stats.hunger = Math.max(0, stats.hunger - 1);
+            stats.mood = Math.max(0, stats.mood - 1);
+            updateStatsUI();
+        }
+
+        function updateStatsUI() {
+            document.getElementById('bar-mood').style.width = stats.mood + '%'; document.getElementById('val-mood').innerText = stats.mood + '%';
+            document.getElementById('bar-hunger').style.width = stats.hunger + '%'; document.getElementById('val-hunger').innerText = stats.hunger + '%';
+            document.getElementById('bar-affection').style.width = stats.affection + '%'; document.getElementById('val-affection').innerText = stats.affection + '%';
+            let healthKey = 'health_good'; let dotColor = 'bg-green-500';
+            if(stats.hunger < 30) { healthKey = 'health_hungry'; dotColor = 'bg-red-500'; }
+            else if(stats.mood < 30) { healthKey = 'health_tired'; dotColor = 'bg-yellow-500'; }
+            else if(stats.hunger < 60) { healthKey = 'health_ok'; dotColor = 'bg-blue-500'; }
+            const t = translations[currentLang];
+            document.getElementById('val-health').innerText = t[healthKey];
+            document.getElementById('health-dot').className = `w-2 h-2 rounded-full animate-pulse ${dotColor}`;
+        }
+
+        function spawnEmoji(type) {
+            const container = document.body;
+            const emoji = document.createElement('div');
+            emoji.className = 'floating-emoji';
+            if(type === 'pet') emoji.innerText = '❤️';
+            else if(type === 'feed') emoji.innerText = '🐟';
+            else if(type === 'jump') emoji.innerText = '✨';
+            else if(type === 'spin') emoji.innerText = '😵‍💫';
+            else if(type === 'surprise') emoji.innerText = '‼️';
+            else if(type === 'sleep') emoji.innerText = '💤';
+            const x = window.innerWidth / 2 + (Math.random() - 0.5) * 100;
+            const y = window.innerHeight / 2;
+            emoji.style.left = x + 'px'; emoji.style.top = y + 'px';
+            container.appendChild(emoji);
+            setTimeout(() => emoji.remove(), 2000);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            const delta = clock.getDelta();
+            const time = clock.getElapsedTime();
+
+            if (catGroup) {
+                actionTimer += delta;
+                let breath = 1 + Math.sin(time * (isSleeping?1.5:2.5)) * 0.015;
+                catGroup.children[0].scale.set(1, breath, breath); // Scale Body only
+
+                // 尾巴自然摆动
+                if (this.tail) {
+                    this.tail.children.forEach(seg => {
+                        const i = seg.userData.id;
+                        let wave = Math.sin(time * 3 - i * 0.5) * 0.15;
+                        if (currentAction === 'spin') wave = Math.sin(time * 15 - i * 0.5) * 0.3;
+                        seg.position.z = wave; seg.position.y = Math.sin(time * 2 - i * 0.3) * 0.1;
+                    });
                 }
-            };
-            chartObjects[canvasId] = new Chart(ctx, { type, data, options: { ...baseOptions, ...options } });
+
+                // 动作状态机
+                if (currentAction) {
+                    switch(currentAction) {
+                        case 'pet': 
+                            headMesh.rotation.z = Math.sin(time * 8) * 0.15; // 歪头
+                            headMesh.rotation.y = Math.sin(time * 4) * 0.1; 
+                            if(actionTimer > 2) stopAction(); break;
+                        case 'feed': 
+                            headMesh.position.y = 1.3 + Math.sin(time * 12) * 0.08; 
+                            headMesh.rotation.z = 0.4;
+                            if(actionTimer > 3) { headMesh.rotation.z = 0; stopAction(); } break;
+                        case 'jump': 
+                            const jumpY = Math.abs(Math.sin(actionTimer * 6)) * 1.8; 
+                            catGroup.position.y = -0.5 + jumpY;
+                            if(actionTimer > 0.5) { catGroup.position.y = -0.5; stopAction(); } break;
+                        case 'spin': 
+                            catGroup.rotation.y += 0.25;
+                            if(actionTimer > 2.5) stopAction(); break;
+                        case 'surprise': 
+                            headMesh.position.y = 2.1; catGroup.scale.set(1.1, 1.1, 1.1);
+                            if(actionTimer > 0.6) { headMesh.position.y = 1.8; catGroup.scale.set(1,1,1); stopAction(); } break;
+                        case 'sleep': 
+                            headMesh.rotation.z = 0.4; headMesh.position.y = 1.6; 
+                            headMesh.rotation.y = 0.2; // 侧头睡
+                            break;
+                    }
+                } else {
+                    if (!isSleeping) {
+                        // 待机呼吸动作
+                        headMesh.rotation.y = Math.sin(time * 0.5) * 0.05; 
+                        headMesh.position.y = 1.8 + Math.sin(time * 2.5) * 0.01;
+                        headMesh.rotation.z = 0;
+                    }
+                }
+            }
+            renderer.render(scene, camera);
         }
 
-        function createPieChart(canvasId, labels, data) {
-            const chartData = {
-                labels: labels,
-                datasets: [{
-                    data: data,
-                    backgroundColor: MD3_CHART_COLORS,
-                    borderColor: getThemeColors().cardBgColor,
-                    borderWidth: 5,
-                    hoverOffset: 15
-                }]
-            };
-            const options = {
-                cutout: '55%',
-                plugins: { tooltip: { callbacks: { label: (context) => `${context.label}: ${context.raw}人` } } }
-            };
-            createChart(canvasId, 'doughnut', chartData, options);
+        function stopAction() {
+            currentAction = null; 
+            headMesh.rotation.set(0,0,0); 
+            headMesh.position.y = 1.8; 
+            catGroup.rotation.y = 0;
         }
 
-        function createBarChart(canvasId, labels, data, label) {
-            const themeColors = getThemeColors();
-            const chartData = {
-                labels: labels,
-                datasets: [{
-                    label: label,
-                    data: data,
-                    backgroundColor: themeColors.primaryAccent,
-                    borderRadius: 10,
-                }]
-            };
-            const options = {
-                plugins: { legend: { display: false } },
-                scales: { 
-                    y: { beginAtZero: true, title: { display: true, text: '学生人数', color: themeColors.textColor }, grid: { drawBorder: false, color: themeColors.gridColor }, ticks: { color: themeColors.textColor } },
-                    x: { grid: { display: false }, ticks: { color: themeColors.textColor } }
-                }
-            };
-            createChart(canvasId, 'bar', chartData, options);
+        function onResize() {
+            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight);
         }
-        
-        function createGroupedBarChart(canvasId, labels, datasets) {
-            const themeColors = getThemeColors();
-            const chartData = {
-                labels: labels,
-                datasets: datasets.map(ds => ({...ds, borderRadius: 8 }))
-            };
-            const options = {
-                scales: { 
-                    y: { beginAtZero: true, stacked: false, title: { display: true, text: '学生人数', color: themeColors.textColor }, grid: { drawBorder: false, color: themeColors.gridColor }, ticks: { color: themeColors.textColor } },
-                    x: { grid: { display: false }, ticks: { color: themeColors.textColor } }
-                }
-            };
-            createChart(canvasId, 'bar', chartData, options);
-        }
+
+        window.toggleAutoRotate = () => { controls.autoRotate = !controls.autoRotate; document.getElementById('icon-rotate').classList.toggle('fa-spin'); };
+        window.resetView = () => controls.reset();
+        window.changeLang = changeLang; window.triggerAction = triggerAction;
+        init();
     </script>
-
 </body>
 </html>
-
